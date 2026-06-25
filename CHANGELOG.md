@@ -14,6 +14,7 @@
 - Add official-documentation research notes for Soroban contract creation and Next.js wallet/frontend integration.
 - Add `AGENTS.md` and `docs/AGENT_SOROBAN_CODING_GUIDE.md` so coding agents have concrete Soroban, Next.js, wallet, secret-safety, and PR workflow rules.
 - Add PerkOS Stellar x402 knowledge and scaffolds: `stellar_x402_perkos_guide`, `stellar_x402_nextjs_scaffold`, `stellar_x402_oz_facilitator_scaffold`, and `docs/PERKOS_STELLAR_X402_GUIDE.md`.
+- Add `stellar_zkproof_guide` and `docs/STELLAR_ZK_PROOF_GUIDE.md` for Stellar/Soroban ZK proof primitives, off-chain proof workflows, and agent safety rules.
 
 ## 0.1.8 - 2026-06-15
 

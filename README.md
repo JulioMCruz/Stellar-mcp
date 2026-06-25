@@ -20,6 +20,7 @@
 - [Example tool calls](#example-tool-calls)
 - [Tools reference (detailed — docs/TOOLS.md)](docs/TOOLS.md)
 - [PerkOS Stellar x402](#perkos-stellar-x402)
+- [Stellar ZK proofs](#stellar-zk-proofs)
 - [Soroban and Next.js scaffolds](#soroban-and-nextjs-scaffolds)
 - [Soroban contract MCP generator](#soroban-contract-mcp-generator)
 - [Troubleshooting](#troubleshooting)
@@ -281,6 +282,7 @@ Summary below: **Read** = no transaction submission by this server; **Write** = 
 | `stellar_x402_perkos_guide`         | Read  | Return PerkOS/OpenZeppelin Stellar x402 architecture and rules.    |
 | `stellar_x402_nextjs_scaffold`      | Write | Create a Next.js paid route and x402/Freighter payment client.     |
 | `stellar_x402_oz_facilitator_scaffold` | Write | Create OpenZeppelin Relayer x402 facilitator config templates.  |
+| `stellar_zkproof_guide`             | Read  | Return Stellar/Soroban ZK proof primitives, patterns, and safety rules. |
 
 
 ---
@@ -384,6 +386,39 @@ Example:
   }
 }
 ```
+
+---
+
+## Stellar ZK proofs
+
+This MCP includes a read-only ZK guide for agents building with Stellar/Soroban.
+
+Stellar's Protocol 25 / X-Ray work adds ZK-friendly host primitives for verifier contracts:
+
+- BN254: `g1_add`, `g1_mul`, `pairing_check`
+- Poseidon/Poseidon2: `poseidon`, `poseidon2`
+
+These are verifier building blocks, not a complete privacy protocol. Agents should generate proofs off-chain with systems such as Noir, RISC Zero, Circom, or Reclaim/zkFetch-style services, then verify public inputs/proofs through Soroban contracts.
+
+Example:
+
+```json
+{ "name": "stellar_zkproof_guide", "arguments": {} }
+```
+
+Agent rules:
+
+- Keep witnesses/private inputs off-chain.
+- Never invent proof bytes, verifying keys, trusted setup material, or private witness data.
+- Bind proofs to network, contract id, statement version, domain, and public inputs.
+- Test verifier contracts with known valid and invalid proof fixtures before UI wiring.
+- Explain clearly in UI what remains private and what becomes public on-chain.
+
+Primary references:
+
+- Stellar docs: <https://developers.stellar.org/docs/build/apps/zk>
+- DoraHacks Stellar Hacks ZK resources: <https://dorahacks.io/hackathon/stellar-hacks-zk/resources>
+- Reclaim zkFetch Stellar example: <https://github.com/reclaimprotocol/zkfetch-stellar-example>
 
 ---
 

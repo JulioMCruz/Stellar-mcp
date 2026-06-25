@@ -52,3 +52,13 @@ These instructions are for coding agents working in this repository or using thi
 - Keep relayer API keys, keystore passphrases, and signer material server-side only.
 - Use the PerkOS facilitator URL as public config, but never expose facilitator auth tokens.
 - Do not settle real x402 payments without explicit approval.
+
+## Stellar ZK Proofs
+
+- Use `stellar_zkproof_guide` before writing or reviewing ZK proof code for Stellar/Soroban.
+- Treat Stellar Protocol 25/X-Ray BN254 and Poseidon/Poseidon2 functions as verifier primitives, not a complete privacy protocol.
+- Generate proofs off-chain with an explicit framework or service such as Noir, RISC Zero, Circom, or Reclaim/zkFetch; do not invent proof bytes or verifying keys.
+- Keep witnesses, private inputs, proving keys, and generated secrets off-chain and out of git.
+- Bind verifier inputs to network, contract id, statement version, domain, and public inputs.
+- Add verifier tests with known valid and invalid proof fixtures before connecting a Next.js UI.
+- In UI copy, explain what remains private and what is published on-chain.

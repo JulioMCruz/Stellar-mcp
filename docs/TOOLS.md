@@ -458,3 +458,11 @@ Return the PerkOS/OpenZeppelin Stellar x402 architecture, endpoints, assets, Nex
 **Parameters** (JSON Schema → table)
 
 _No parameters._
+
+### `stellar_zkproof_guide`
+
+Return Stellar/Soroban zero-knowledge proof architecture, native primitives, framework choices, and agent safety rules.
+
+**Parameters** (JSON Schema → table)
+
+_No parameters._
