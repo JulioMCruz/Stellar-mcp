@@ -10,6 +10,7 @@
 - Add `stellar_soroban_scaffold_contract` for Rust Soroban contract workspaces with tests and Stellar CLI build/deploy/bindings notes.
 - Make generated Soroban contract workspaces compatible with `stellar contract build` by enabling release overflow checks.
 - Add `stellar_nextjs_wallet_scaffold` for Next.js Freighter wallet components, network env helpers, HTTPS local dev notes, and TypeScript bindings workflow.
+- Add `stellar_generate_test_wallet` plus Next.js scaffold files for testnet wallet creation and contract binding wiring.
 - Add official-documentation research notes for Soroban contract creation and Next.js wallet/frontend integration.
 - Add `AGENTS.md` and `docs/AGENT_SOROBAN_CODING_GUIDE.md` so coding agents have concrete Soroban, Next.js, wallet, secret-safety, and PR workflow rules.
 - Add PerkOS Stellar x402 knowledge and scaffolds: `stellar_x402_perkos_guide`, `stellar_x402_nextjs_scaffold`, `stellar_x402_oz_facilitator_scaffold`, and `docs/PERKOS_STELLAR_X402_GUIDE.md`.

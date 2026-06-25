@@ -232,6 +232,36 @@ NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 NEXT_PUBLIC_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 NEXT_PUBLIC_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
 NEXT_PUBLIC_STELLAR_CONTRACT_ID=
+# Server-only local test wallet. Never expose through NEXT_PUBLIC_* and never commit .env.local.
+STELLAR_TEST_PUBLIC_KEY=
+STELLAR_TEST_SECRET_KEY=
+`
+    },
+    {
+      path: "scripts/create-test-wallet.mjs",
+      content: `#!/usr/bin/env node
+import { Keypair } from "@stellar/stellar-sdk";
+
+const shouldFund = process.argv.includes("--fund");
+const keypair = Keypair.random();
+let funding = null;
+
+if (shouldFund) {
+  const response = await fetch(\`https://friendbot.stellar.org?addr=\${encodeURIComponent(keypair.publicKey())}\`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(\`Friendbot failed (\${response.status}): \${body}\`);
+  }
+  funding = await response.json();
+}
+
+console.log("# Testnet wallet. Paste into .env.local only. Never commit it.");
+console.log(\`STELLAR_TEST_PUBLIC_KEY=\${keypair.publicKey()}\`);
+console.log(\`STELLAR_TEST_SECRET_KEY=\${keypair.secret()}\`);
+console.log("STELLAR_NETWORK=testnet");
+if (funding) {
+  console.error(\`Friendbot funded account in ledger \${funding.ledger ?? "unknown"}\`);
+}
 `
     },
     {
@@ -253,6 +283,29 @@ export const stellarRpcUrl =
 export const stellarHorizonUrl =
   process.env.NEXT_PUBLIC_STELLAR_HORIZON_URL ??
   (stellarNetwork === "mainnet" ? "https://horizon.stellar.org" : "https://horizon-testnet.stellar.org");
+`
+    },
+    {
+      path: "lib/stellar/contract.ts",
+      content: `import { stellarNetwork } from "./network";
+
+export const stellarContractId = process.env.NEXT_PUBLIC_STELLAR_CONTRACT_ID ?? "";
+
+export function requireContractId(): string {
+  if (!stellarContractId) {
+    throw new Error("Missing NEXT_PUBLIC_STELLAR_CONTRACT_ID. Deploy the Soroban contract and generate TypeScript bindings first.");
+  }
+  return stellarContractId;
+}
+
+export function contractBindingNotes() {
+  return {
+    network: stellarNetwork,
+    contractId: stellarContractId || "<CONTRACT_ID>",
+    command: "stellar contract bindings typescript --contract-id <CONTRACT_ID> --output-dir ./packages/<contract-name> --overwrite",
+    rule: "Import generated bindings from ./packages/<contract-name>; do not hand-encode XDR in UI code."
+  };
+}
 `
     },
     {
@@ -443,6 +496,16 @@ Freighter requires a secure browser context. For local Next.js development, use:
 
 Copy \`.env.local.example\` to \`.env.local\` and set \`NEXT_PUBLIC_STELLAR_CONTRACT_ID\` after deployment.
 
+## Test wallets
+
+Create a local testnet wallet for integration tests:
+
+\`\`\`bash
+node scripts/create-test-wallet.mjs --fund
+\`\`\`
+
+Paste the printed values into \`.env.local\` only. Never commit \`.env.local\`, \`STELLAR_TEST_SECRET_KEY\`, or any wallet seed. Do not expose test wallet secrets through \`NEXT_PUBLIC_*\`.
+
 Use Stellar CLI TypeScript bindings for contract calls:
 
 \`\`\`bash
@@ -451,6 +514,8 @@ stellar contract bindings typescript \\
   --output-dir ./packages/<contract-name> \\
   --overwrite
 \`\`\`
+
+After bindings are generated, import the generated client into server actions, API routes, or client code that signs through Freighter. Use \`lib/stellar/contract.ts\` to keep the active contract ID/network consistent.
 `
     }
   ];

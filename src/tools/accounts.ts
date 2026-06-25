@@ -281,6 +281,77 @@ export function registerAccountTools(server: McpServer, config: AppConfig): void
   );
 
   server.tool(
+    "stellar_generate_test_wallet",
+    "Generate a Stellar testnet wallet for local tests and optionally fund it with Friendbot. Returns the secret seed; never commit it.",
+    {
+      fundWithFriendbot: z.boolean().default(false).describe("Fund the generated account with Friendbot. Testnet only."),
+      label: z.string().trim().max(64).optional().describe("Optional local label for the generated wallet.")
+    },
+    async ({ fundWithFriendbot, label }) => {
+      try {
+        if (config.network !== "testnet") {
+          throw new Error("Test wallet generation is only enabled when STELLAR_NETWORK=testnet.");
+        }
+
+        const keypair = Keypair.random();
+        let funding: { status: "skipped" } | { status: "success"; hash: unknown; ledger: unknown } = { status: "skipped" };
+
+        if (fundWithFriendbot) {
+          const response = await fetch(
+            `https://friendbot.stellar.org?addr=${keypair.publicKey()}`,
+            { method: "GET" }
+          );
+
+          if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`Friendbot failed (HTTP ${response.status}): ${body}`);
+          }
+
+          const data = await response.json();
+          funding = {
+            status: "success",
+            hash: data.hash,
+            ledger: data.ledger
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                status: "created",
+                label: label ?? null,
+                network: "testnet",
+                publicKey: keypair.publicKey(),
+                secretKey: keypair.secret(),
+                funding,
+                env: {
+                  STELLAR_PUBLIC_KEY: keypair.publicKey(),
+                  STELLAR_SECRET_KEY: keypair.secret(),
+                  STELLAR_NETWORK: "testnet"
+                },
+                warning: "Testnet wallet only. Store secretKey in .env.local or a secret manager; never commit it or expose it through NEXT_PUBLIC_*."
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: redactSensitiveText(mapped.message)
+            }
+          ]
+        };
+      }
+    }
+  );
+
+  server.tool(
     "stellar_set_options",
     "Modify account options (e.g., adding a signer, setting weights/thresholds, or updating flags). Returns unsigned XDR by default unless policy allows.",
     {
