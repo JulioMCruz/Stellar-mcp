@@ -16,6 +16,10 @@ test("soroban contract scaffold creates Rust workspace and contract template", (
   const written = writeScaffoldFiles(outDir, files, false);
 
   assert.ok(written.some((path) => path.endsWith("Cargo.toml")));
+  const workspaceManifest = readFileSync(join(outDir, "Cargo.toml"), "utf8");
+  assert.match(workspaceManifest, /\[profile\.release\]/);
+  assert.match(workspaceManifest, /overflow-checks = true/);
+
   const contract = readFileSync(join(outDir, "contracts/quest_board/src/lib.rs"), "utf8");
   assert.match(contract, /#!\[no_std\]/);
   assert.match(contract, /pub struct QuestBoardContract/);
