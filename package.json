@@ -45,7 +45,8 @@
     "docs/TOOLS.md",
     "docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md",
     "docs/AGENT_SOROBAN_CODING_GUIDE.md",
-    "docs/PERKOS_STELLAR_X402_GUIDE.md"
+    "docs/PERKOS_STELLAR_X402_GUIDE.md",
+    "docs/STELLAR_ZK_PROOF_GUIDE.md"
   ],
   "engines": {
     "node": ">=20"
@@ -70,7 +71,7 @@
     "smoke:tier1:friendbot": "node build/tests/smoke-tier1-friendbot.js",
     "smoke:tier1:testnet": "node build/tests/smoke-tier1-testnet.js",
     "smoke:testnet:readonly": "npm run build && node build/tests/smoke-testnet-readonly.js",
-    "test:unit": "npm run build && node --test build/tests/accounts.test.js build/tests/assets.test.js build/tests/autonomy.test.js build/tests/config.test.js build/tests/errors.test.js build/tests/generator.test.js build/tests/http-lib.test.js build/tests/http-transport.test.js build/tests/meta.test.js build/tests/network.test.js build/tests/payments.test.js build/tests/redact.test.js build/tests/scaffold.test.js build/tests/seps.test.js build/tests/stellar.test.js build/tests/tools-md-drift.test.js build/tests/validate.test.js build/tests/valuation.test.js build/tests/x402.test.js build/tests/xdr.test.js",
+    "test:unit": "npm run build && node --test build/tests/accounts.test.js build/tests/assets.test.js build/tests/autonomy.test.js build/tests/config.test.js build/tests/errors.test.js build/tests/generator.test.js build/tests/http-lib.test.js build/tests/http-transport.test.js build/tests/meta.test.js build/tests/network.test.js build/tests/payments.test.js build/tests/redact.test.js build/tests/scaffold.test.js build/tests/seps.test.js build/tests/stellar.test.js build/tests/tools-md-drift.test.js build/tests/validate.test.js build/tests/valuation.test.js build/tests/x402.test.js build/tests/xdr.test.js build/tests/zk.test.js",
     "test:integration": "npm run build && node --test build/tests/integration-*.test.js",
     "test:all": "npm run test:unit && npm run test:integration"
   },
