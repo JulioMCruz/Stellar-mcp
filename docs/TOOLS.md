@@ -405,6 +405,17 @@ Simulate a Soroban smart contract invocation to get footprint, events, and resul
 
 ## Other
 
+### `stellar_generate_test_wallet`
+
+Generate a Stellar testnet wallet for local tests and optionally fund it with Friendbot. Returns the secret seed; never commit it.
+
+**Parameters** (JSON Schema → table)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fundWithFriendbot` | `boolean` | no | Fund the generated account with Friendbot. Testnet only. |
+| `label` | `string` | no | Optional local label for the generated wallet. |
+
 ### `stellar_nextjs_wallet_scaffold`
 
 Create Next.js wallet components for Stellar/Freighter plus env and contract binding notes.

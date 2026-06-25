@@ -193,6 +193,7 @@ Summary below: **Read** = no transaction submission by this server; **Write** = 
 | `stellar_get_account`         | Read  | Balances, signers, flags, subentries, minimum balance.                            |
 | `stellar_get_account_history` | Read  | Paginated transaction history (`limit`, optional `cursor`).                       |
 | `stellar_fund_account`        | Write | **Testnet only** — funds via Friendbot HTTP (10k test XLM).                       |
+| `stellar_generate_test_wallet` | Write | Generate a testnet wallet and optionally fund it with Friendbot.                 |
 | `stellar_set_options`         | Write | Account options (signers, weights, flags); unsigned unless policy allows signing. |
 
 
@@ -391,7 +392,9 @@ Example:
 Two write tools turn this MCP server into a starter-kit assistant for Stellar apps:
 
 - `stellar_soroban_scaffold_contract` creates a Rust `soroban-sdk` contract workspace using the current `wasm32v1-none` target flow and Stellar CLI build/deploy/bindings commands.
-- `stellar_nextjs_wallet_scaffold` creates Next.js client-side wallet files for Freighter: `useStellarWallet`, `WalletButton`, network env helpers, HTTPS local dev notes, and binding-generation instructions.
+- `stellar_nextjs_wallet_scaffold` creates Next.js client-side wallet files for Freighter: `useStellarWallet`, `WalletButton`, network/contract env helpers, test-wallet script, HTTPS local dev notes, and binding-generation instructions.
+
+For local test wallets, use `stellar_generate_test_wallet` or the generated `scripts/create-test-wallet.mjs --fund`. Test wallet seeds belong only in `.env.local` or a secret manager. Never commit them, and never expose them through `NEXT_PUBLIC_*`.
 
 This follows the official Stellar flow: build Soroban contracts in Rust, deploy with Stellar CLI, generate TypeScript bindings with `stellar contract bindings typescript`, then call those bindings from the frontend. Freighter local testing should run in a secure context, so the scaffold documents `next dev --experimental-https`.
 

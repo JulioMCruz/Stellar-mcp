@@ -64,6 +64,26 @@ stellar contract bindings typescript \
 npm run dev -- --experimental-https
 ```
 
+11. Create test wallets only for testnet:
+
+```json
+{
+  "name": "stellar_generate_test_wallet",
+  "arguments": {
+    "fundWithFriendbot": true,
+    "label": "local-ui-test"
+  }
+}
+```
+
+Or, in a generated Next.js scaffold:
+
+```bash
+node scripts/create-test-wallet.mjs --fund
+```
+
+Paste wallet values into `.env.local` only. Never commit `.env.local` or expose secret seeds through `NEXT_PUBLIC_*`.
+
 ## Contract Rules
 
 - Use `soroban-sdk`.
@@ -95,11 +115,20 @@ npm run dev -- --experimental-https
 - Keep relayer API keys, keystore passphrases, and signer material out of browser code.
 - Do not settle real payments without explicit approval.
 
+## Contract-to-UI Rules
+
+- Contract tests come first. Every contract method used by the UI should have Rust unit coverage or an explicit integration test plan.
+- Generate TypeScript bindings after deploy and import those bindings into the Next.js app.
+- Keep `NEXT_PUBLIC_STELLAR_CONTRACT_ID` as the public contract ID only; never put secret seeds in public env.
+- Use `lib/stellar/contract.ts` from the scaffold to keep contract ID/network checks in one place.
+- Test wallets are for testnet only. Mainnet wallets require explicit approval and separate handling.
+
 ## Review Checklist
 
 - `cargo test` passes for contract code.
 - `stellar contract build` succeeds before deploy instructions are claimed.
 - Generated TypeScript bindings match the deployed contract ID and network.
+- Test wallets are generated/funded on testnet only and stored outside git.
 - `npm run build` or the app's equivalent type/build check passes for Next.js changes.
 - No secret seeds, `.env` files, private keys, or real wallet material were staged.
 - PR description includes test/build commands actually run.

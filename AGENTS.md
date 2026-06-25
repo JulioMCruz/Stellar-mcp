@@ -31,6 +31,10 @@ These instructions are for coding agents working in this repository or using thi
 - Never expose server secrets through `NEXT_PUBLIC_*`.
 - `NEXT_PUBLIC_*` values are only for public network, RPC, Horizon, and contract IDs.
 - Keep transaction signing in the wallet. Do not put secret seeds in a Next.js app.
+- For test wallets, use `stellar_generate_test_wallet` or the generated `scripts/create-test-wallet.mjs --fund`; store seeds only in `.env.local` or a secret manager.
+- Never commit test wallet seeds. Testnet secrets are still secrets.
+- After deploying a contract, set `NEXT_PUBLIC_STELLAR_CONTRACT_ID`, generate TypeScript bindings, and import those bindings into the UI instead of hand-writing XDR.
+- Smart contract UI work must include contract tests plus at least one UI/build/typecheck path showing the generated bindings are wired.
 
 ## MCP Usage
 
