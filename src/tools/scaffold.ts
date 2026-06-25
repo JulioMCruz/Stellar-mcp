@@ -90,6 +90,9 @@ rust-version = "1.84"
 
 [workspace.dependencies]
 soroban-sdk = "23.0.0"
+
+[profile.release]
+overflow-checks = true
 `
     },
     {
