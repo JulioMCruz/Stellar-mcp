@@ -1,0 +1,664 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  Account,
+  Address,
+  Contract,
+  Keypair,
+  Networks,
+  Operation,
+  StrKey,
+  TransactionBuilder,
+  rpc,
+  xdr,
+  nativeToScVal
+} from "@stellar/stellar-sdk";
+import { z } from "zod";
+import * as fs from "node:fs";
+
+import type { AppConfig } from "../config.js";
+import { normalizeStellarError } from "../lib/errors.js";
+import { contractIdSchema, publicKeySchema, assertSourceKeyMatch, safePathSchema } from "../lib/validate.js";
+import { createStellarClients } from "../lib/stellar.js";
+import { redactSensitiveText, sanitizeDebugPayload } from "../lib/redact.js";
+
+const invokeSorobanSchema = {
+  contractId: contractIdSchema.describe("Soroban contract ID (C...)"),
+  method: z.string().describe("Contract method name to invoke"),
+  sourceAccount: publicKeySchema.describe("Source account public key (G...) to use for simulation."),
+  args: z
+    .array(
+      z.object({
+        type: z.enum([
+          "u32",
+          "i32",
+          "u64",
+          "i64",
+          "u128",
+          "i128",
+          "u256",
+          "i256",
+          "string",
+          "symbol",
+          "address",
+          "bool"
+        ]),
+        value: z.any()
+      })
+    )
+    .optional()
+    .describe("List of arguments for the contract invocation.")
+};
+
+// Helper for minimal native-to-ScVal mapping
+function parseArgToScVal(type: string, value: any): xdr.ScVal {
+  switch (type) {
+    case "u32":
+    case "i32":
+      return nativeToScVal(Number(value), { type });
+    case "u64":
+    case "i64":
+    case "u128":
+    case "i128":
+    case "u256":
+    case "i256":
+      return nativeToScVal(BigInt(value), { type: type as any });
+    case "string":
+    case "symbol":
+    case "address":
+    case "bool":
+      return nativeToScVal(value, { type: type as any });
+    default:
+      throw new Error(`Unsupported argument type: ${type}`);
+  }
+}
+
+export type ReadStateDurability = "persistent" | "temporary";
+
+function readStateDurabilityToXdr(durability: ReadStateDurability): xdr.ContractDataDurability {
+  switch (durability) {
+    case "temporary":
+      return xdr.ContractDataDurability.temporary();
+    default:
+      return xdr.ContractDataDurability.persistent();
+  }
+}
+
+export function buildReadStateLedgerKey(
+  contractId: string,
+  keyType: string,
+  keyValue: any,
+  durability: ReadStateDurability = "persistent"
+): xdr.LedgerKey {
+  const scValKey = parseArgToScVal(keyType, keyValue);
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: new Contract(contractId).address().toScAddress(),
+      key: scValKey,
+      durability: readStateDurabilityToXdr(durability)
+    })
+  );
+}
+
+async function waitForTransactionAndExtractValue(
+  rpcServer: rpc.Server,
+  txHash: string,
+  label: string,
+): Promise<{ type: "bytes"; value: Buffer } | { type: "address"; value: xdr.ScAddress }> {
+  const POLL_INTERVAL_MS = 1000;
+  const MAX_POLLS = 30; // 30 seconds
+
+  for (let i = 0; i < MAX_POLLS; i++) {
+    const txResponse = await rpcServer.getTransaction(txHash);
+
+    if (txResponse.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+      if (!txResponse.returnValue) {
+        throw new Error(`${label}: transaction succeeded but has no returnValue`);
+      }
+      const scVal = txResponse.returnValue;
+      const switchName = scVal.switch().name as string;
+
+      if (switchName === "scvBytes") {
+        return { type: "bytes", value: Buffer.from(scVal.bytes()) };
+      }
+
+      if (switchName === "scvAddress") {
+        return { type: "address", value: scVal.address() as xdr.ScAddress };
+      }
+
+      throw new Error(`${label}: unexpected returnValue type: ${switchName}`);
+    }
+
+    if (txResponse.status === rpc.Api.GetTransactionStatus.FAILED) {
+      throw new Error(`${label}: transaction failed (hash: ${txHash})`);
+    }
+
+    // NOT_FOUND — keep polling
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+
+  throw new Error(`${label}: timed out waiting for transaction ${txHash}`);
+}
+
+export function registerSorobanTools(server: McpServer, config: AppConfig): void {
+  server.tool(
+    "stellar_soroban_simulate",
+    "Simulate a Soroban smart contract invocation to get footprint, events, and results. Does NOT submit transaction.",
+    invokeSorobanSchema,
+    async ({ contractId, method, sourceAccount, args }) => {
+      try {
+        const stellar = createStellarClients(config);
+
+        const contract = new Contract(contractId);
+
+        let scArgs: xdr.ScVal[] = [];
+        if (args && args.length > 0) {
+          scArgs = args.map(arg => parseArgToScVal(arg.type, arg.value));
+        }
+
+        const call = contract.call(method, ...scArgs);
+
+        let account;
+        try {
+          account = await stellar.runHorizon(
+            stellar.horizon.loadAccount(sourceAccount),
+            "load_source_account"
+          );
+        } catch {
+          account = new Account(sourceAccount, "0");
+        }
+
+        const builder = new TransactionBuilder(account, {
+          fee: "100",
+          networkPassphrase: stellar.networkPassphrase
+        });
+
+        builder.addOperation(call);
+        builder.setTimeout(30);
+
+        const tx = builder.build();
+
+        const simulation = await stellar.runRpc(
+          stellar.rpc.simulateTransaction(tx),
+          "simulate_transaction"
+        );
+
+        if (rpc.Api.isSimulationError(simulation)) {
+          throw new Error(`Simulation failed: ${simulation.error}`);
+        }
+
+        const successSim = simulation as any;
+
+        const result = {
+          results: successSim.result?.retval ? [successSim.result.retval.toXDR("base64")] : [],
+          footprint: successSim.transactionData ? successSim.transactionData.build().toXDR("base64") : null,
+          minResourceFee: successSim.minResourceFee,
+          events: successSim.events?.map((e: any) => e.toXDR("base64")) || [],
+          _debug: sanitizeDebugPayload({
+            contractId,
+            method,
+            networkPassphrase: stellar.networkPassphrase
+          })
+        };
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [{ type: "text", text: redactSensitiveText(mapped.message) }]
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "stellar_soroban_invoke",
+    "Invoke a Soroban smart contract. Simulates the transaction, extracts the footprint, and submits it to the network if policy allows.",
+    invokeSorobanSchema,
+    async ({ contractId, method, sourceAccount, args }) => {
+      try {
+        const stellar = createStellarClients(config);
+
+        // Fail fast if source key does not match (before any network calls)
+        if (config.secretKey) {
+          assertSourceKeyMatch(config.validatedKeypair!, sourceAccount, "stellar_soroban_invoke");
+        }
+
+        const contract = new Contract(contractId);
+
+        let scArgs: xdr.ScVal[] = [];
+        if (args && args.length > 0) {
+          scArgs = args.map(arg => parseArgToScVal(arg.type, arg.value));
+        }
+
+        const call = contract.call(method, ...scArgs);
+
+        const account = await stellar.runHorizon(
+          stellar.horizon.loadAccount(sourceAccount),
+          "load_source_account"
+        );
+
+        const builder = new TransactionBuilder(account, {
+          fee: "100",
+          networkPassphrase: stellar.networkPassphrase
+        });
+
+        builder.addOperation(call);
+        builder.setTimeout(30);
+
+        const tx = builder.build();
+
+        const simulation = await stellar.runRpc(
+          stellar.rpc.simulateTransaction(tx),
+          "simulate_transaction"
+        );
+
+        if (rpc.Api.isSimulationError(simulation)) {
+          throw new Error(`Simulation failed: ${simulation.error}`);
+        }
+
+        const preparedTxBuilder = rpc.assembleTransaction(tx, simulation);
+        const preparedTx = preparedTxBuilder.build();
+
+        const isUnsignedMode =
+          config.autoSignPolicy === "safe" ||
+          (config.autoSignPolicy === "guarded" && config.autoSignLimit === 0) ||
+          (!config.autoSignPolicy && !config.autoSign);
+
+        if (!isUnsignedMode && config.secretKey) {
+          preparedTx.sign(config.validatedKeypair!);
+        }
+
+        if (isUnsignedMode || !config.secretKey) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "unsigned",
+                  message:
+                    "Transaction requires signatures. Please sign this assembled XDR (it already includes Soroban footprints).",
+                  unsignedXdr: preparedTx.toXDR()
+                }, null, 2)
+              }
+            ]
+          };
+        }
+
+        const submission = await stellar.runRpc(
+          stellar.rpc.sendTransaction(preparedTx),
+          "submit_soroban_transaction"
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                status: submission.status,
+                hash: submission.hash,
+                errorResultXdr: submission.errorResult?.toXDR("base64") || null,
+                _debug: sanitizeDebugPayload({
+                  contractId,
+                  method,
+                  networkPassphrase: stellar.networkPassphrase
+                })
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [{ type: "text", text: redactSensitiveText(mapped.message) }]
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "stellar_soroban_get_events",
+    "Fetch historical events emitted by a Soroban smart contract.",
+    {
+      startLedger: z.number().int().describe("The ledger sequence number to start fetching events from"),
+      contractIds: z.array(contractIdSchema).optional().describe("Array of contract IDs (C...) to filter by"),
+      topics: z.array(z.string()).optional().describe("Array of topic strings (e.g. 'transfer', '*') to filter by"),
+      limit: z.number().int().min(1).max(100).default(100).describe("Maximum number of events to return")
+    },
+    async ({ startLedger, contractIds, topics, limit }) => {
+      try {
+        const stellar = createStellarClients(config);
+
+        const filters: any[] = [];
+        if (contractIds && contractIds.length > 0) {
+          filters.push({
+            type: "contract",
+            contractIds: contractIds,
+            topics: topics ? topics.map(t => t === "*" ? "*" : xdr.ScVal.scvSymbol(t).toXDR("base64")) : []
+          });
+        }
+
+        const eventsResponse = await stellar.runRpc(
+          stellar.rpc.getEvents({
+            startLedger,
+            filters,
+            limit
+          }),
+          "get_events"
+        );
+
+        const parsedEvents = eventsResponse.events.map(ev => ({
+          ledger: ev.ledger,
+          ledgerClosedAt: ev.ledgerClosedAt,
+          contractId: ev.contractId,
+          id: ev.id,
+          pagingToken: (ev as any).pagingToken,
+          topics: ev.topic.map(t => t.toXDR("base64")),
+          valueXdr: ev.value.toXDR("base64"),
+          inSuccessfulContractCall: ev.inSuccessfulContractCall
+        }));
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                events: parsedEvents,
+                latestLedger: eventsResponse.latestLedger,
+                _debug: sanitizeDebugPayload({
+                  startLedger,
+                  filtersCount: filters.length
+                })
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [{ type: "text", text: redactSensitiveText(mapped.message) }]
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "stellar_soroban_deploy",
+    "Upload WASM and deploy a Soroban smart contract instance. Returns wasmHash, contractId, and transaction hashes.",
+    {
+      wasmFilePath: safePathSchema.describe("Absolute or relative path to the compiled .wasm file"),
+      sourceAccount: publicKeySchema.describe("Source account public key (G...) to deploy from"),
+      salt: z.string().optional().describe("32-byte hex salt for deterministic contract ID. Random if omitted.")
+    },
+    async ({ wasmFilePath, sourceAccount, salt }) => {
+      try {
+        if (!fs.existsSync(wasmFilePath)) {
+          throw new Error(`WASM file not found at path: ${wasmFilePath}`);
+        }
+
+        const wasmBuffer = fs.readFileSync(wasmFilePath);
+        const stellar = createStellarClients(config);
+
+        const isUnsignedMode =
+          config.autoSignPolicy === "safe" ||
+          (config.autoSignPolicy === "guarded" && config.autoSignLimit === 0) ||
+          (!config.autoSignPolicy && !config.autoSign);
+
+        // --- Step 1: Upload WASM ---
+        const uploadAccount = await stellar.runHorizon(
+          stellar.horizon.loadAccount(sourceAccount),
+          "load_source_account_upload"
+        );
+
+        const uploadBuilder = new TransactionBuilder(uploadAccount, {
+          fee: "100",
+          networkPassphrase: stellar.networkPassphrase
+        });
+
+        uploadBuilder.addOperation(Operation.uploadContractWasm({ wasm: wasmBuffer }));
+        uploadBuilder.setTimeout(30);
+
+        const uploadTx = uploadBuilder.build();
+
+        const uploadSim = await stellar.runRpc(
+          stellar.rpc.simulateTransaction(uploadTx),
+          "simulate_upload"
+        );
+
+        if (rpc.Api.isSimulationError(uploadSim)) {
+          throw new Error(`Upload simulation failed: ${uploadSim.error}`);
+        }
+
+        const preparedUploadTx = rpc.assembleTransaction(uploadTx, uploadSim).build();
+
+        if (!isUnsignedMode && config.secretKey) {
+          assertSourceKeyMatch(config.validatedKeypair!, sourceAccount, "stellar_soroban_deploy (upload)");
+          preparedUploadTx.sign(config.validatedKeypair!);
+        }
+
+        if (isUnsignedMode || !config.secretKey) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "unsigned_upload",
+                  message:
+                    "Upload transaction requires signatures. Sign and submit, then call this tool again or use stellar_soroban_deploy with the wasmHash.",
+                  unsignedXdr: preparedUploadTx.toXDR()
+                }, null, 2)
+              }
+            ]
+          };
+        }
+
+        const uploadResult = await stellar.runRpc(
+          stellar.rpc.sendTransaction(preparedUploadTx),
+          "submit_soroban_upload"
+        );
+
+        if (uploadResult.errorResult) {
+          throw new Error(
+            `Upload submission failed: ${uploadResult.errorResult}`
+          );
+        }
+
+        // Wait for upload confirmation and extract wasmHash
+        const uploadTxHash = uploadResult.hash;
+        const uploadValue = await waitForTransactionAndExtractValue(
+          stellar.rpc,
+          uploadTxHash,
+          "upload"
+        );
+
+        if (uploadValue.type !== "bytes") {
+          throw new Error("upload: expected bytes returnValue (wasm hash)");
+        }
+        const wasmHash = uploadValue.value;
+
+        // --- Step 2: Create contract instance ---
+        const deployAccount = await stellar.runHorizon(
+          stellar.horizon.loadAccount(sourceAccount),
+          "load_source_account_deploy"
+        );
+
+        const saltBuffer = salt
+          ? Buffer.from(salt, "hex")
+          : crypto.getRandomValues(new Uint8Array(32));
+
+        if (saltBuffer.length !== 32) {
+          throw new Error(`Salt must be 32 bytes (64 hex chars), got ${saltBuffer.length} bytes`);
+        }
+
+        const deployBuilder = new TransactionBuilder(deployAccount, {
+          fee: "100",
+          networkPassphrase: stellar.networkPassphrase
+        });
+
+        deployBuilder.addOperation(
+          Operation.createCustomContract({
+            wasmHash: Buffer.from(wasmHash),
+            address: Address.account(StrKey.decodeEd25519PublicKey(sourceAccount)),
+            salt: saltBuffer
+          })
+        );
+        deployBuilder.setTimeout(30);
+
+        const deployTx = deployBuilder.build();
+
+        const deploySim = await stellar.runRpc(
+          stellar.rpc.simulateTransaction(deployTx),
+          "simulate_deploy"
+        );
+
+        if (rpc.Api.isSimulationError(deploySim)) {
+          throw new Error(`Deploy simulation failed: ${deploySim.error}`);
+        }
+
+        const preparedDeployTx = rpc.assembleTransaction(deployTx, deploySim).build();
+
+        if (!isUnsignedMode && config.secretKey) {
+          assertSourceKeyMatch(config.validatedKeypair!, sourceAccount, "stellar_soroban_deploy (deploy)");
+          preparedDeployTx.sign(config.validatedKeypair!);
+        }
+
+        if (isUnsignedMode || !config.secretKey) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status: "unsigned_deploy",
+                  message:
+                    "Deploy transaction requires signatures. Sign and submit to create the contract instance.",
+                  uploadHash: uploadTxHash,
+                  unsignedDeployXdr: preparedDeployTx.toXDR()
+                }, null, 2)
+              }
+            ]
+          };
+        }
+
+        const deployResult = await stellar.runRpc(
+          stellar.rpc.sendTransaction(preparedDeployTx),
+          "submit_soroban_deploy"
+        );
+
+        if (deployResult.errorResult) {
+          throw new Error(
+            `Deploy submission failed: ${deployResult.errorResult}`
+          );
+        }
+
+        // Wait for deploy confirmation and extract contractId
+        const deployTxHash = deployResult.hash;
+        const deployValue = await waitForTransactionAndExtractValue(
+          stellar.rpc,
+          deployTxHash,
+          "deploy"
+        );
+
+        if (deployValue.type !== "address") {
+          throw new Error("deploy: expected address returnValue (contract ID)");
+        }
+
+        const contractId = StrKey.encodeContract(
+          Address.fromScAddress(deployValue.value).toBuffer()
+        );
+
+        const wasmHashHex = wasmHash.toString("hex");
+        const saltHex = Buffer.from(saltBuffer).toString("hex");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                status: "success",
+                uploadHash: uploadTxHash,
+                deployHash: deployTxHash,
+                contractId,
+                wasmHash: wasmHashHex,
+                salt: saltHex,
+                ...(config.network === "testnet"
+                  ? { dryRunWarning: "Network is testnet." }
+                  : {}),
+                _debug: sanitizeDebugPayload({
+                  wasmFilePath,
+                  networkPassphrase: stellar.networkPassphrase
+                })
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [{ type: "text", text: redactSensitiveText(mapped.message) }]
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "stellar_soroban_read_state",
+    "Read the state of a specific contract data entry directly from the ledger without simulating a transaction.",
+    {
+      contractId: contractIdSchema.describe("Soroban contract ID (C...)"),
+      keyType: z.enum([
+        "u32", "i32", "u64", "i64", "u128", "i128", "u256", "i256", "string", "symbol", "address", "bool"
+      ]).describe("The ScVal type of the ledger key"),
+      keyValue: z.any().describe("The value of the ledger key"),
+      durability: z.enum(["persistent", "temporary"]).default("persistent").describe("The durability of the contract data entry")
+    },
+    async ({ contractId, keyType, keyValue, durability }) => {
+      try {
+        const stellar = createStellarClients(config);
+
+        const ledgerKey = buildReadStateLedgerKey(contractId, keyType, keyValue, durability);
+
+        const response = await stellar.runRpc(
+          stellar.rpc.getLedgerEntries(ledgerKey),
+          "get_ledger_entries"
+        );
+
+        if (!response.entries || response.entries.length === 0) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ found: false, valueXdr: null }) }]
+          };
+        }
+
+        const entry = response.entries[0].val;
+        const contractData = entry.contractData();
+        const value = contractData.val();
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                found: true,
+                valueXdr: value.toXDR("base64"),
+                _debug: sanitizeDebugPayload({
+                  contractId,
+                  keyType
+                })
+              }, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        const mapped = normalizeStellarError(error);
+        return {
+          isError: true,
+          content: [{ type: "text", text: redactSensitiveText(mapped.message) }]
+        };
+      }
+    }
+  );
+}

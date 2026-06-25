@@ -1,0 +1,105 @@
+# Changelog
+
+## 0.1.9 - 2026-06-24
+
+- Add `MCP_HTTP_AUTH_TOKEN` for Streamable HTTP/SSE MCP requests. `/mcp` POST requests require `Authorization: Bearer <token>` when configured.
+- Fail closed when `MCP_TRANSPORT=http-sse` binds to a non-loopback host without `MCP_HTTP_AUTH_TOKEN`.
+- Document the HTTP auth token, safer network exposure defaults, and `.env.example` settings.
+- Add CI dependency audit gate with `npm audit --audit-level=low`.
+- Refresh dependency lockfile to clear known audit findings; `npm audit` reports 0 vulnerabilities.
+
+## 0.1.8 - 2026-06-15
+
+- Fix boolean env parsing so false-like values (`false`, `0`, `no`, `off`) no longer coerce to `true`.
+- Harden endpoint safety by sharing the canonical host guard across config overrides and discovered endpoints, including bracketed IPv6 and IPv6-mapped IPv4 cases.
+- Fix generator output so raw Soroban arg names are preserved when building `args` for `Spec.funcArgsToScVals`, while local TS identifiers remain collision-safe.
+- Remove stale files on generator regeneration.
+- Add explicit durability support to `stellar_soroban_read_state` with a testable ledger-key helper.
+- Bind HTTP-SSE to `127.0.0.1` by default and make the bind host configurable.
+- Bump runtime/package versions to `0.1.8`.
+
+## 0.1.7 - 2026-03-22
+
+- **npm package name:** publish as **`@ggoldani/stellarmcp`** (`publishConfig.access: public`). The unscoped name `stellarmcp` is rejected by the registry as too similar to the existing package **`stellar-mcp`**. Generator `findStellarMcpPackageRoot` accepts any `@[scope]/stellarmcp` (and legacy `stellarmcp` for local dev).
+- Phase C pre-closure: `verify:phase:c` runs `pack:sanity` (`npm pack --dry-run --json` checks for templates, shipped `errors.ts`/`redact.ts`, and `build/src/generator/cli.js`) and **full** `generator:e2e` (baseline + exotic fixture outputs, nested `npm ci`/`npm install` + `typecheck`, configurable timeouts; quick local path via default `generator:e2e` or `GENERATOR_E2E_QUICK=1`).
+- Narrow `package.json` `files` to `build/src` so E2E artifacts under `build/` are never published; CI workflow runs `verify:phase:c` (30m timeout).
+- Add `tests/fixtures/contract-spec-exotic-fixture.json` (map-typed arg), generator tests for loose schemas + **byte-identical** `errors.ts`/`redact.ts` copy guard; document non-goals for `z.unknown()` / loose edges in README.
+
+## 0.1.6 - 2026-03-22
+
+- Phase C (Soroban MCP generator): add `stellarmcp-generate` / `src/generator/` CLI + programmatic `generateProject`, `templates/generated-mcp` baseline, fixture `tests/fixtures/contract-spec-fixture.json`, and `tests/generator.test.ts` conformance assertions.
+- Generated packages embed Zod env validation, signing policy hooks, copied `errors.ts`/`redact.ts`, per-method MCP tools, `typedClient.ts`, and `meta.ts` (`GENERATOR_ARTIFACT_VERSION`, `SPEC_FINGERPRINT`, compatibility note).
+- `npm run verify:phase:c` extends Phase B gate with `generator:e2e`; publish `files` include `templates` and `src/lib/errors.ts` + `src/lib/redact.ts` for generator consumers.
+
+## 0.1.5 - 2026-03-22
+
+- Phase B (historical meta): add read-only `stellar_get_ledger_meta` and `stellar_get_transaction_meta` with Horizon-first upstream, Soroban RPC fallback, bounded base64 XDR fields (truncation metadata), freshness/cache metadata, and optional `operation_index` via `TransactionMeta` JSON decode.
+- Add disk-backed TTL cache (`STELLAR_META_CACHE_*`) and `STELLAR_META_MAX_XDR_CHARS` default; treat `NotFoundError` as Horizon miss for fallback.
+- Add `tests/meta.test.ts` plus `isHorizonAxiosNotFound` coverage in `tests/errors.test.ts`.
+- Extract `buildTransactionMetaOperationSlice` (`src/lib/metaOperationSlice.ts`) with fixture-backed tests for complete, truncated, out-of-range, and invalid-XDR paths; CI runs `npm run verify:phase:b`; README documents meta cache operational risks.
+
+## 0.1.4 - 2026-03-21
+
+- Phase A (XDR parity): add `stellar_xdr_types`, `stellar_xdr_json_schema`, `stellar_xdr_guess`, and `stellar_xdr_encode` using `@stellar/stellar-xdr-json` (WASM initialized via `initSync` and `require.resolve` for Node).
+- Register XDR tools in `src/tools/xdr.ts`; keep `stellar_decode_xdr` behavior as the existing `Transaction`-based decoder (moved from `network.ts` with the same output shape).
+- Add `tests/xdr.test.ts` (roundtrip, guess, error-hint coverage).
+
+## 0.1.3 - 2026-03-18
+
+- Add 3-level auto-sign policy runtime:
+  - `safe` (default recommended): always unsigned XDR.
+  - `guarded`: requires `STELLAR_AUTO_SIGN_LIMIT > 0` with fail-closed valuation behavior.
+  - `expert`: unlimited auto-sign and submit.
+- Preserve backward compatibility when policy is unset by honoring legacy envs:
+  - `STELLAR_AUTO_SIGN`
+  - `STELLAR_AUTO_SIGN_LIMIT`
+- Add config test coverage for all policy modes and guarded validation.
+
+## 0.1.2 - 2026-03-18
+
+- Harden SEP-10 flow:
+  - enforce strict anchor-domain host input (`anchorDomain` host-only validation).
+  - validate discovered `WEB_AUTH_ENDPOINT` is `https` and scoped to anchor domain/subdomain.
+  - preserve existing query params when building challenge URL.
+  - validate challenge payload fields and expected network passphrase before signing.
+  - fail fast if SEP-10 token response omits `token`.
+- Improve payment/anchor DX with advisory on credit-asset payments without memo.
+- Expand actionable error mapping guidance for:
+  - `tx_no_source_account`
+  - `op_malformed`
+  - `tx_bad_auth` with explicit network passphrase mismatch hint.
+- Add non-live autonomy smoke verification:
+  - `npm run smoke:autonomy:mock`
+- Remove local copied `stellarskills` mirror files from repo to avoid documentation drift (use upstream sources directly).
+
+## 0.1.1 - 2026-03-18
+
+- Remove plan bifurcation by keeping a single authoritative planning document.
+- Add auto-sign environment controls:
+  - `STELLAR_AUTO_SIGN`
+  - `STELLAR_AUTO_SIGN_LIMIT`
+  - `STELLAR_USDC_ISSUER`
+- Add centralized signing policy engine with fail-closed behavior when valuation is unavailable.
+- Add USDC valuation utility with canonical USDC fast path and SEP-38 quote fallback.
+- Apply auto-sign policy to transaction-writing tools:
+  - `stellar_submit_payment`
+  - `stellar_create_trustline`
+- Add unit tests for signing policy and valuation helpers.
+- Add in-repo live execution plan snapshot at `docs/plans/2026-03-18-stellarmcp-live-plan.md`.
+
+## 0.1.0 - 2026-03-18
+
+- Bootstrap strict TypeScript MCP server foundation with stdio and Streamable HTTP/SSE transports.
+- Add security hardening primitives:
+  - endpoint allowlist validation
+  - redaction and debug payload sanitization
+  - HTTP rate/concurrency/payload guards
+  - network timeout wrappers (30s max)
+- Implement launch tools:
+  - `stellar_get_account`
+  - `stellar_submit_payment`
+  - `stellar_create_trustline`
+  - `stellar_get_fee_stats`
+  - `stellar_sep10_auth`
+  - `stellar_get_sep38_quote`
+- Add smoke test suite for foundation startup and live Tier-1 testnet execution script.
