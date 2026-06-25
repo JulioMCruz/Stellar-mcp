@@ -4,7 +4,7 @@
 
 **All tools (names, descriptions, parameters):** **[`docs/TOOLS.md`](docs/TOOLS.md)** — auto-generated from the same `tools/list` your MCP client sees; attach or paste it when asking an agent *how to use this server*.
 
-**Requirements:** Node.js **≥ 20**. · **Source:** [github.com/ggoldani/stellar-mcp](https://github.com/ggoldani/stellar-mcp)
+**Requirements:** Node.js **≥ 20**. · **Source:** [github.com/JulioMCruz/Stellar-mcp](https://github.com/JulioMCruz/Stellar-mcp)
 
 ---
 
@@ -30,8 +30,8 @@
 ### From a clone (this repository)
 
 ```bash
-git clone https://github.com/ggoldani/stellar-mcp.git
-cd stellar-mcp
+git clone https://github.com/JulioMCruz/Stellar-mcp.git
+cd Stellar-mcp
 npm install
 npm run build
 ```
@@ -40,18 +40,18 @@ Run the server (see [Run the server](#run-the-server)), then [connect your MCP c
 
 ### From npm
 
-**Package on npm:** [`@ggoldani/stellarmcp`](https://www.npmjs.com/package/@ggoldani/stellarmcp) (scoped package).
+**Package on npm:** `@juliomcruz/stellarmcp` (scoped package, when published).
 
 The published tarball includes **`build/src`**, **`templates/`**, **generator inputs** (`src/lib/errors.ts`, `redact.ts`), **`.env.example`**, and docs — enough to run the server and `stellarmcp-generate` without cloning.
 
 ```bash
-npm install @ggoldani/stellarmcp
+npm install @juliomcruz/stellarmcp
 npx stellarmcp
-# or: npx @ggoldani/stellarmcp
+# or: npx @juliomcruz/stellarmcp
 ```
 
-- Env template: **`node_modules/@ggoldani/stellarmcp/.env.example`** → copy to your project as `.env` if needed.
-- MCP **stdio** when the package is a dependency (example): `"args": ["${workspaceFolder}/node_modules/@ggoldani/stellarmcp/build/src/index.js"]`.
+- Env template: **`node_modules/@juliomcruz/stellarmcp/.env.example`** → copy to your project as `.env` if needed.
+- MCP **stdio** when the package is a dependency (example): `"args": ["${workspaceFolder}/node_modules/@juliomcruz/stellarmcp/build/src/index.js"]`.
 
 Prefer GitHub if you are **developing or patching** this repository ([clone](#from-a-clone-this-repository)).
 

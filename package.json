@@ -1,5 +1,5 @@
 {
-  "name": "@ggoldani/stellarmcp",
+  "name": "@juliomcruz/stellarmcp",
   "version": "0.1.9",
   "description": "Stellar MCP server focused on execution-grade agent tooling.",
   "license": "MIT",
@@ -14,11 +14,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ggoldani/stellar-mcp.git"
+    "url": "git+https://github.com/JulioMCruz/Stellar-mcp.git"
   },
-  "homepage": "https://github.com/ggoldani/stellar-mcp#readme",
+  "homepage": "https://github.com/JulioMCruz/Stellar-mcp#readme",
   "bugs": {
-    "url": "https://github.com/ggoldani/stellar-mcp/issues"
+    "url": "https://github.com/JulioMCruz/Stellar-mcp/issues"
   },
   "keywords": [
     "stellar",
