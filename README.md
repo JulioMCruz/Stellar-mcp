@@ -19,6 +19,7 @@
 - [Tools reference](#tools-reference)
 - [Example tool calls](#example-tool-calls)
 - [Tools reference (detailed — docs/TOOLS.md)](docs/TOOLS.md)
+- [Soroban and Next.js scaffolds](#soroban-and-nextjs-scaffolds)
 - [Soroban contract MCP generator](#soroban-contract-mcp-generator)
 - [Troubleshooting](#troubleshooting)
 - [Development & testing](#development--testing)
@@ -268,6 +269,15 @@ Summary below: **Read** = no transaction submission by this server; **Write** = 
 | `stellar_soroban_read_state` | Read  | Direct `getLedgerEntries` for a contract data key.                 |
 
 
+### Scaffolds
+
+
+| Tool                                | Type  | Description                                                     |
+| ----------------------------------- | ----- | --------------------------------------------------------------- |
+| `stellar_soroban_scaffold_contract` | Write | Create a Rust Soroban contract workspace with tests and CLI docs. |
+| `stellar_nextjs_wallet_scaffold`    | Write | Create Next.js Freighter wallet hook/component/env starter files. |
+
+
 ---
 
 ## Example tool calls
@@ -320,6 +330,41 @@ JSON shapes are illustrative; your MCP host sends `tools/call` with `name` + `ar
 ```
 
 For full argument schemas, use your client’s **tool list** / schema UI or inspect Zod definitions under `src/tools/`.
+
+---
+
+## Soroban and Next.js scaffolds
+
+Two write tools turn this MCP server into a starter-kit assistant for Stellar apps:
+
+- `stellar_soroban_scaffold_contract` creates a Rust `soroban-sdk` contract workspace using the current `wasm32v1-none` target flow and Stellar CLI build/deploy/bindings commands.
+- `stellar_nextjs_wallet_scaffold` creates Next.js client-side wallet files for Freighter: `useStellarWallet`, `WalletButton`, network env helpers, HTTPS local dev notes, and binding-generation instructions.
+
+This follows the official Stellar flow: build Soroban contracts in Rust, deploy with Stellar CLI, generate TypeScript bindings with `stellar contract bindings typescript`, then call those bindings from the frontend. Freighter local testing should run in a secure context, so the scaffold documents `next dev --experimental-https`.
+
+Research notes and source links: [`docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md`](docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md).
+
+Example:
+
+```json
+{
+  "name": "stellar_soroban_scaffold_contract",
+  "arguments": {
+    "outputDir": "./stellar-contracts",
+    "contractName": "quest_board"
+  }
+}
+```
+
+```json
+{
+  "name": "stellar_nextjs_wallet_scaffold",
+  "arguments": {
+    "outputDir": "./web",
+    "appName": "quest_board"
+  }
+}
+```
 
 ---
 

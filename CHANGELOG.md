@@ -7,6 +7,9 @@
 - Document the HTTP auth token, safer network exposure defaults, and `.env.example` settings.
 - Add CI dependency audit gate with `npm audit --audit-level=low`.
 - Refresh dependency lockfile to clear known audit findings; `npm audit` reports 0 vulnerabilities.
+- Add `stellar_soroban_scaffold_contract` for Rust Soroban contract workspaces with tests and Stellar CLI build/deploy/bindings notes.
+- Add `stellar_nextjs_wallet_scaffold` for Next.js Freighter wallet components, network env helpers, HTTPS local dev notes, and TypeScript bindings workflow.
+- Add official-documentation research notes for Soroban contract creation and Next.js wallet/frontend integration.
 
 ## 0.1.8 - 2026-06-15
 

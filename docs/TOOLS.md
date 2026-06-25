@@ -378,6 +378,18 @@ Read the state of a specific contract data entry directly from the ledger withou
 | `keyValue` | `any` | yes | The value of the ledger key |
 | `durability` | `enum` | no | The durability of the contract data entry |
 
+### `stellar_soroban_scaffold_contract`
+
+Create a Rust Soroban smart contract scaffold with tests and Stellar CLI build/deploy/bindings commands.
+
+**Parameters** (JSON Schema → table)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `outputDir` | `string` | yes | Directory where scaffold files should be written. |
+| `contractName` | `string` | no | Contract/crate name to scaffold. |
+| `overwrite` | `boolean` | no | Overwrite existing scaffold files if they already exist. |
+
 ### `stellar_soroban_simulate`
 
 Simulate a Soroban smart contract invocation to get footprint, events, and results. Does NOT submit transaction.
@@ -390,3 +402,17 @@ Simulate a Soroban smart contract invocation to get footprint, events, and resul
 | `method` | `string` | yes | Contract method name to invoke |
 | `sourceAccount` | `string` | yes | Source account public key (G...) to use for simulation. |
 | `args` | `array` | no | List of arguments for the contract invocation. |
+
+## Other
+
+### `stellar_nextjs_wallet_scaffold`
+
+Create Next.js wallet components for Stellar/Freighter plus env and contract binding notes.
+
+**Parameters** (JSON Schema → table)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `outputDir` | `string` | yes | Directory where scaffold files should be written. |
+| `appName` | `string` | no | App name used in generated notes. |
+| `overwrite` | `boolean` | no | Overwrite existing scaffold files if they already exist. |
