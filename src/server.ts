@@ -10,6 +10,7 @@ import { registerScaffoldTools } from "./tools/scaffold.js";
 import { registerSepTools } from "./tools/seps.js";
 import { registerSorobanTools } from "./tools/soroban.js";
 import { registerXdrTools } from "./tools/xdr.js";
+import { registerX402Tools } from "./tools/x402.js";
 
 export function createServer(config: AppConfig): McpServer {
   const server = new McpServer({
@@ -26,6 +27,7 @@ export function createServer(config: AppConfig): McpServer {
   registerSepTools(server, config);
   registerSorobanTools(server, config);
   registerScaffoldTools(server);
+  registerX402Tools(server);
 
   return server;
 }

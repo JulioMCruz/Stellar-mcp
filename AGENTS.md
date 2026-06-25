@@ -38,3 +38,13 @@ These instructions are for coding agents working in this repository or using thi
 - For writes, default to unsigned or user-reviewed flows unless Julio explicitly approves signing/submission.
 - When generating code, include concrete commands for build, test, deploy, and binding generation.
 - If an argument shape is uncertain, inspect the generated TypeScript bindings or the contract spec instead of guessing XDR manually.
+
+## Stellar x402
+
+- Use `stellar_x402_perkos_guide` before writing x402 code.
+- Use `stellar_x402_nextjs_scaffold` for paid Next.js API routes and Freighter-based client payment flows.
+- Use `stellar_x402_oz_facilitator_scaffold` for OpenZeppelin Relayer facilitator config/templates.
+- Do not invent x402 payloads or Stellar auth-entry signing formats. Use `@x402/*`, `@x402/stellar`, and `@stellar/freighter-api`.
+- Keep relayer API keys, keystore passphrases, and signer material server-side only.
+- Use the PerkOS facilitator URL as public config, but never expose facilitator auth tokens.
+- Do not settle real x402 payments without explicit approval.

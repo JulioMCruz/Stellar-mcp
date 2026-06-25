@@ -84,6 +84,17 @@ npm run dev -- --experimental-https
 - Prefer generated TypeScript bindings over manual XDR.
 - Show wallet errors clearly. Do not hide failed signatures or rejected wallet prompts.
 
+## x402 Rules
+
+- Use `stellar_x402_perkos_guide` before writing Stellar x402 code.
+- Use `stellar_x402_nextjs_scaffold` when adding paid Next.js endpoints.
+- Use `stellar_x402_oz_facilitator_scaffold` when preparing an OpenZeppelin Relayer facilitator deployment.
+- Server-side route pattern: `withX402` from `@x402/next`, `HTTPFacilitatorClient` from `@x402/core/server`, and `ExactStellarScheme` from `@x402/stellar/exact/server`.
+- Client-side payment pattern: Freighter `signAuthEntry`, `x402Client`, `ExactStellarScheme`, and `wrapFetchWithPayment`.
+- Use `stellar:pubnet` or `stellar:testnet` explicitly. Do not mix network labels with Stellar passphrases.
+- Keep relayer API keys, keystore passphrases, and signer material out of browser code.
+- Do not settle real payments without explicit approval.
+
 ## Review Checklist
 
 - `cargo test` passes for contract code.

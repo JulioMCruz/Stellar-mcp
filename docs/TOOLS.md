@@ -416,3 +416,34 @@ Create Next.js wallet components for Stellar/Freighter plus env and contract bin
 | `outputDir` | `string` | yes | Directory where scaffold files should be written. |
 | `appName` | `string` | no | App name used in generated notes. |
 | `overwrite` | `boolean` | no | Overwrite existing scaffold files if they already exist. |
+
+### `stellar_x402_nextjs_scaffold`
+
+Create a Next.js paid API route and Freighter-based x402 client scaffold using the PerkOS Stellar facilitator pattern.
+
+**Parameters** (JSON Schema → table)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `outputDir` | `string` | yes | Directory where x402 scaffold files should be written. |
+| `appName` | `string` | no | — |
+| `overwrite` | `boolean` | no | — |
+
+### `stellar_x402_oz_facilitator_scaffold`
+
+Create OpenZeppelin Relayer x402 facilitator plugin/config templates for Stellar/PerkOS deployments.
+
+**Parameters** (JSON Schema → table)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `outputDir` | `string` | yes | Directory where x402 scaffold files should be written. |
+| `overwrite` | `boolean` | no | — |
+
+### `stellar_x402_perkos_guide`
+
+Return the PerkOS/OpenZeppelin Stellar x402 architecture, endpoints, assets, Next.js patterns, and safety rules.
+
+**Parameters** (JSON Schema → table)
+
+_No parameters._

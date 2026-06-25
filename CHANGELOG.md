@@ -11,6 +11,7 @@
 - Add `stellar_nextjs_wallet_scaffold` for Next.js Freighter wallet components, network env helpers, HTTPS local dev notes, and TypeScript bindings workflow.
 - Add official-documentation research notes for Soroban contract creation and Next.js wallet/frontend integration.
 - Add `AGENTS.md` and `docs/AGENT_SOROBAN_CODING_GUIDE.md` so coding agents have concrete Soroban, Next.js, wallet, secret-safety, and PR workflow rules.
+- Add PerkOS Stellar x402 knowledge and scaffolds: `stellar_x402_perkos_guide`, `stellar_x402_nextjs_scaffold`, `stellar_x402_oz_facilitator_scaffold`, and `docs/PERKOS_STELLAR_X402_GUIDE.md`.
 
 ## 0.1.8 - 2026-06-15
 
