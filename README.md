@@ -344,6 +344,8 @@ This follows the official Stellar flow: build Soroban contracts in Rust, deploy 
 
 Research notes and source links: [`docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md`](docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md).
 
+Agent coding instructions: [`docs/AGENT_SOROBAN_CODING_GUIDE.md`](docs/AGENT_SOROBAN_CODING_GUIDE.md). Repository-level rules for coding agents are in [`AGENTS.md`](AGENTS.md).
+
 Example:
 
 ```json

@@ -39,10 +39,12 @@
     "src/lib/errors.ts",
     "src/lib/redact.ts",
     ".env.example",
+    "AGENTS.md",
     "README.md",
     "CHANGELOG.md",
     "docs/TOOLS.md",
-    "docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md"
+    "docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md",
+    "docs/AGENT_SOROBAN_CODING_GUIDE.md"
   ],
   "engines": {
     "node": ">=20"
