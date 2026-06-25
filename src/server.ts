@@ -6,14 +6,16 @@ import { registerAssetTools } from "./tools/assets.js";
 import { registerMetaTools } from "./tools/meta.js";
 import { registerNetworkTools } from "./tools/network.js";
 import { registerPaymentTools } from "./tools/payments.js";
+import { registerScaffoldTools } from "./tools/scaffold.js";
 import { registerSepTools } from "./tools/seps.js";
 import { registerSorobanTools } from "./tools/soroban.js";
 import { registerXdrTools } from "./tools/xdr.js";
+import { registerX402Tools } from "./tools/x402.js";
 
 export function createServer(config: AppConfig): McpServer {
   const server = new McpServer({
     name: "stellarmcp",
-    version: "0.1.8"
+    version: "0.1.9"
   });
 
   registerAccountTools(server, config);
@@ -24,6 +26,8 @@ export function createServer(config: AppConfig): McpServer {
   registerXdrTools(server, config);
   registerSepTools(server, config);
   registerSorobanTools(server, config);
+  registerScaffoldTools(server);
+  registerX402Tools(server);
 
   return server;
 }

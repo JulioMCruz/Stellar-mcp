@@ -19,6 +19,8 @@
 - [Tools reference](#tools-reference)
 - [Example tool calls](#example-tool-calls)
 - [Tools reference (detailed — docs/TOOLS.md)](docs/TOOLS.md)
+- [PerkOS Stellar x402](#perkos-stellar-x402)
+- [Soroban and Next.js scaffolds](#soroban-and-nextjs-scaffolds)
 - [Soroban contract MCP generator](#soroban-contract-mcp-generator)
 - [Troubleshooting](#troubleshooting)
 - [Development & testing](#development--testing)
@@ -268,6 +270,18 @@ Summary below: **Read** = no transaction submission by this server; **Write** = 
 | `stellar_soroban_read_state` | Read  | Direct `getLedgerEntries` for a contract data key.                 |
 
 
+### Scaffolds
+
+
+| Tool                                | Type  | Description                                                     |
+| ----------------------------------- | ----- | --------------------------------------------------------------- |
+| `stellar_soroban_scaffold_contract` | Write | Create a Rust Soroban contract workspace with tests and CLI docs. |
+| `stellar_nextjs_wallet_scaffold`    | Write | Create Next.js Freighter wallet hook/component/env starter files. |
+| `stellar_x402_perkos_guide`         | Read  | Return PerkOS/OpenZeppelin Stellar x402 architecture and rules.    |
+| `stellar_x402_nextjs_scaffold`      | Write | Create a Next.js paid route and x402/Freighter payment client.     |
+| `stellar_x402_oz_facilitator_scaffold` | Write | Create OpenZeppelin Relayer x402 facilitator config templates.  |
+
+
 ---
 
 ## Example tool calls
@@ -320,6 +334,92 @@ JSON shapes are illustrative; your MCP host sends `tools/call` with `name` + `ar
 ```
 
 For full argument schemas, use your client’s **tool list** / schema UI or inspect Zod definitions under `src/tools/`.
+
+---
+
+## PerkOS Stellar x402
+
+This MCP understands the PerkOS Stellar x402 pattern from:
+
+- `PerkOS-xyz/Stellar-x402-Demo`
+- `PerkOS-xyz/Stellar-x402-Relayer`
+
+The core flow is:
+
+1. A client calls a paid API route.
+2. The server returns HTTP 402 payment requirements.
+3. The browser signs a Stellar auth entry through Freighter.
+4. `@x402/fetch` retries with the `X-PAYMENT` header.
+5. PerkOS Stellar Relayer verifies and settles through the OpenZeppelin Relayer x402 facilitator plugin.
+
+Stellar USDC defaults:
+
+- Pubnet: `stellar:pubnet`, `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75`
+- Testnet: `stellar:testnet`, `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
+
+Guide: [`docs/PERKOS_STELLAR_X402_GUIDE.md`](docs/PERKOS_STELLAR_X402_GUIDE.md).
+
+Example:
+
+```json
+{ "name": "stellar_x402_perkos_guide", "arguments": {} }
+```
+
+```json
+{
+  "name": "stellar_x402_nextjs_scaffold",
+  "arguments": {
+    "outputDir": "./web",
+    "appName": "quest_board"
+  }
+}
+```
+
+```json
+{
+  "name": "stellar_x402_oz_facilitator_scaffold",
+  "arguments": {
+    "outputDir": "./relayer"
+  }
+}
+```
+
+---
+
+## Soroban and Next.js scaffolds
+
+Two write tools turn this MCP server into a starter-kit assistant for Stellar apps:
+
+- `stellar_soroban_scaffold_contract` creates a Rust `soroban-sdk` contract workspace using the current `wasm32v1-none` target flow and Stellar CLI build/deploy/bindings commands.
+- `stellar_nextjs_wallet_scaffold` creates Next.js client-side wallet files for Freighter: `useStellarWallet`, `WalletButton`, network env helpers, HTTPS local dev notes, and binding-generation instructions.
+
+This follows the official Stellar flow: build Soroban contracts in Rust, deploy with Stellar CLI, generate TypeScript bindings with `stellar contract bindings typescript`, then call those bindings from the frontend. Freighter local testing should run in a secure context, so the scaffold documents `next dev --experimental-https`.
+
+Research notes and source links: [`docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md`](docs/STELLAR_NEXTJS_SOROBAN_RESEARCH.md).
+
+Agent coding instructions: [`docs/AGENT_SOROBAN_CODING_GUIDE.md`](docs/AGENT_SOROBAN_CODING_GUIDE.md). Repository-level rules for coding agents are in [`AGENTS.md`](AGENTS.md).
+
+Example:
+
+```json
+{
+  "name": "stellar_soroban_scaffold_contract",
+  "arguments": {
+    "outputDir": "./stellar-contracts",
+    "contractName": "quest_board"
+  }
+}
+```
+
+```json
+{
+  "name": "stellar_nextjs_wallet_scaffold",
+  "arguments": {
+    "outputDir": "./web",
+    "appName": "quest_board"
+  }
+}
+```
 
 ---
 
